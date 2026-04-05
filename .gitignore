@@ -1,0 +1,25 @@
+# 本地数据与状态（勿提交）
+data/state/
+data/raw/
+data/processed/
+
+# 运行产物
+reports/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+*.egg-info/
+.venv/
+venv/
+
+# 环境变量与密钥
+.env
+.env.*
+
+# 编辑器与系统
+.DS_Store
+.idea/
+.vscode/

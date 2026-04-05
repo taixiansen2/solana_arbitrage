@@ -1,0 +1,66 @@
+# Resource limits: `mem_limit` / `cpus` apply under `docker compose` on Linux.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  collector:
+    build: .
+    init: true
+    working_dir: /app
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    environment:
+      APP_ROOT: /app
+      RPC_URL: ${RPC_URL:-https://solana-rpc.publicnode.com}
+      # Single UTC day (YYYY-MM-DD)
+      COLLECT_DATE: ${COLLECT_DATE:-2026-03-15}
+      # Or range (overrides COLLECT_DATE if both set)
+      START_DATE: ${START_DATE:-}
+      END_DATE: ${END_DATE:-}
+      HTTP_USER_AGENT: ${HTTP_USER_AGENT:-PropAMM-Collector/1.0 (+research)}
+      # 公共 RPC 可先 8–12；若 429 增多再降到 4–6
+      RATE_LIMIT_RPS: ${RATE_LIMIT_RPS:-8}
+      # 设为 1 则删除 data/state/signatures.db 后重新拉签名
+      CLEAR_STATE: ${CLEAR_STATE:-0}
+      # 以下为可选；若不写进 compose，容器内拿不到宿主机 export 的变量
+      SKIP_DISCOVER: ${SKIP_DISCOVER:-0}
+      COLLECT_BY_SLOTS: ${COLLECT_BY_SLOTS:-0}
+      SLOT_START: ${SLOT_START:-}
+      SLOT_END: ${SLOT_END:-}
+      SLOT_RANGE_FORCE: ${SLOT_RANGE_FORCE:-0}
+      MAX_SLOT_RANGE: ${MAX_SLOT_RANGE:-2500}
+      RESUME_SLOT_RANGE: ${RESUME_SLOT_RANGE:-0}
+      # 留空时勿传 ""；未设置则用 0 表示走脚本内自动间隔
+      SLOT_PROGRESS_EVERY: ${SLOT_PROGRESS_EVERY:-0}
+      # 只扫块入库、不拉 getTransaction（极大命中量时先关）
+      SKIP_FETCH: ${SKIP_FETCH:-0}
+      FETCH_PROGRESS_EVERY: ${FETCH_PROGRESS_EVERY:-100}
+      FETCH_COMMIT_EVERY: ${FETCH_COMMIT_EVERY:-50}
+      # 只拉前 N 条（调试）；0 表示不限制
+      FETCH_LIMIT: ${FETCH_LIMIT:-0}
+      # 例：data/config/programs.propamm-only.yaml 避免扫块时匹配 SoLF 等高频 program
+      PROGRAMS_CONFIG: ${PROGRAMS_CONFIG:-}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      MONGODB_DB: ${MONGODB_DB:-propamm}
+      MONGODB_COLLECTION: ${MONGODB_COLLECTION:-tx_summaries}
+      JUPITER_HEAVY_MIN_IX: ${JUPITER_HEAVY_MIN_IX:-3}
+    mem_limit: 1g
+    cpus: 1.0
+    restart: "no"
+    # No ports published — outbound RPC only
+
+volumes:
+  mongo_data:

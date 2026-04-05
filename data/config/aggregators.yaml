@@ -1,0 +1,10 @@
+# 常见聚合器 / 路由 program（用于判断是否经 aggregator）
+labels:
+  JUP6LkbZjqS1j4wqQ2TvHw7ihVyPEBC8BVfPJTH6J6Uy: jupiter_v6
+  JUP5cHjnnCx2DPrRWiHQsj58Sb8J76fhBvMEb8PCzrzo: jupiter_v5
+  # Router 类（可按需增补）
+  DCFEdgoaMM6qZnB3UjhLhpAXe5BztcED2fw1W8FrVffJ: dflow_amm_router
+programs:
+  - JUP6LkbZjqS1j4wqQ2TvHw7ihVyPEBC8BVfPJTH6J6Uy
+  - JUP5cHjnnCx2DPrRWiHQsj58Sb8J76fhBvMEb8PCzrzo
+  - DCFEdgoaMM6qZnB3UjhLhpAXe5BztcED2fw1W8FrVffJ

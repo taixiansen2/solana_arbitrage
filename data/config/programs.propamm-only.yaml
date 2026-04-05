@@ -1,0 +1,5 @@
+# 仅用于 slot 扫描：只保留确认的 PropAMM（pAMM 池程序），避免 SoLF 等高频 DEX 灌爆 SQLite
+programs:
+  - address: pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    label: pAMM_pool_mainnet
+    source: explorer

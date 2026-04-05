@@ -1,0 +1,5 @@
+# 人工补充：与 discover_programs 输出合并为 programs.yaml
+programs:
+  - address: pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    label: seed_pamm_explorer_mainnet
+    source: manual_seed

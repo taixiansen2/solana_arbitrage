@@ -1,0 +1,1 @@
+"""PropAMM Solana collector package."""

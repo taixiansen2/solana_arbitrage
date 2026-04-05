@@ -1,0 +1,62 @@
+programs:
+- address: 2wT8Yq49kHgDzXuPxZSaeLaH1qbmGXtEyPy64bL7aD3c
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: 9H6tua7jkLhdm3w8BvgpTn5LZNU7g4ZynDmCiNN3q6Rp
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: LFNTYraetVioAPnGJht4yNg2aUZFXR776cMeN9VMjXp
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY
+  label: auto_discovered
+  sources:
+  - url: https://solana.com/news/understanding-proprietary-amms
+    kind: page_scrape
+  verified_on_chain: true
+- address: SoLFiHG9TfgtdUXUjWAxi3LtvYuFyDLVhBWxdMZxyCe
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: TessVdML9pBGgG9yGks7o4HewRaXVAMuoVj4x83GLQH
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: ZERor4xhbUycZ6gb9ntrhqscUcZmAbQDjEAtCf4hbZY
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: goonERTdGsjnkZqWuVjs73BZ3Pb9qoCUdBUL17BnS5j
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y
+  label: auto_discovered
+  sources:
+  - url: https://www.helius.dev/blog/solanas-proprietary-amm-revolution
+    kind: page_scrape
+  verified_on_chain: true
+- address: pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+  label: seed_pamm_explorer_mainnet
+  sources:
+  - url: https://explorer.solana.com/address/pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA
+    kind: page_scrape
+  verified_on_chain: true
+  source: manual_seed
