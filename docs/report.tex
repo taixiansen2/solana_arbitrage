@@ -73,7 +73,7 @@
 \section{结果分析}
 基于目前新的一轮 100 个区块提取解析的 \textbf{16,707} 笔交易样本，得出如下初步结论：
 \begin{itemize}
-    \item \textbf{极低的聚合器依赖度}：在严密的 MEV 程序筛选下，命中聚合器（\texttt{via\_aggregator}）以及 \texttt{jupiter\_heavy} 依赖度的占比为 \textbf{0.0\%}。这证实了：真正的套利机器人和做市商为了追求速度和微薄利差，绝不使用面向散户的聚合路由，而是自建智能合约直接使用 CPI 调用底层 DEX 进行原子操作。
+    \item \textbf{极高的聚合器依赖度（原结论的重大修正）}：在早期的测试版本中，由于 \texttt{aggregators.yaml} 配置文件遗漏了部分核心的 Jupiter 备用路由合约地址（如 \texttt{JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4} 等），导致系统误判所有交易均未经过聚合器（\textbf{0.0\%}）。经过个案溯源（如交易 \texttt{uQcSGihf...}）并全网补全 Jupiter 与 Raydium Router 的地址特征后，我们发现：真实的 PropAMM 高频机器人在执行套利时，\textbf{深度寄生并依赖 Jupiter 聚合器}的路由系统来寻找全网最佳流动性与最深盘口，而非完全自己构建算法直连底层 DEX。此前的“0.0\% 依赖度”属于典型的\textbf{假阴性（False Negative）}特征提取错误。
     \item \textbf{头部程序占比}：\texttt{9H6tua7jkLhdm3w8BvgpTn5L...} 出现 6,960 次（占 \textbf{40.6\%}），\texttt{pAMMBay...} 出现 6,314 次。它们垄断了几乎全部高频交易量。
     \item \textbf{套利链路与利润}：通过新增的 \texttt{arbitrage} 链路检测与 \texttt{profit} 闭环计算，我们在 1.6 万笔交易中成功提取到了 \textbf{4,566} 笔带有明显正向利润的纯套利闭环交易。最常用的中转计价代币为 USDC 和 WSOL。
 \end{itemize}

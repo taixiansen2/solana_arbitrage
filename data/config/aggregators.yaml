@@ -1,10 +1,18 @@
 # 常见聚合器 / 路由 program（用于判断是否经 aggregator）
 labels:
   JUP6LkbZjqS1j4wqQ2TvHw7ihVyPEBC8BVfPJTH6J6Uy: jupiter_v6
+  JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4: jupiter_v6_alt
   JUP5cHjnnCx2DPrRWiHQsj58Sb8J76fhBvMEb8PCzrzo: jupiter_v5
+  JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB: jupiter_v4
+  jupoNjAxXgZ4rjzxzPMP4oxduvQsQtZzyknqvzYNrNu: jupiter_limit_orders
   # Router 类（可按需增补）
   DCFEdgoaMM6qZnB3UjhLhpAXe5BztcED2fw1W8FrVffJ: dflow_amm_router
+  routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS: raydium_router
 programs:
   - JUP6LkbZjqS1j4wqQ2TvHw7ihVyPEBC8BVfPJTH6J6Uy
+  - JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4
   - JUP5cHjnnCx2DPrRWiHQsj58Sb8J76fhBvMEb8PCzrzo
+  - JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB
+  - jupoNjAxXgZ4rjzxzPMP4oxduvQsQtZzyknqvzYNrNu
   - DCFEdgoaMM6qZnB3UjhLhpAXe5BztcED2fw1W8FrVffJ
+  - routeUGWgWzqBWFcrCfv8tritsqukccJPu3q5GPP3xS
