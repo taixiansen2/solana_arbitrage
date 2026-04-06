@@ -33,7 +33,7 @@ def main():
     for doc in cursor:
         current_chunk.append(doc)
         if len(current_chunk) >= chunk_size:
-            filename = f"/out/export_data_part{part}.json"
+            filename = f"/out/data/result/export_data_part{part}.json"
             with open(filename, "w", encoding="utf-8") as f:
                 # Use bson.json_util.dumps to handle MongoDB specific types like ObjectId
                 f.write(dumps(current_chunk, indent=2))
@@ -43,7 +43,7 @@ def main():
             
     # Write remaining documents
     if current_chunk:
-        filename = f"/out/export_data_part{part}.json"
+        filename = f"/out/data/result/export_data_part{part}.json"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(dumps(current_chunk, indent=2))
         print(f"Wrote {len(current_chunk)} records to {filename}")
