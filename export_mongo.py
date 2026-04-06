@@ -10,11 +10,22 @@ def main():
     db = client[os.environ.get("MONGODB_DB", "propamm")]
     collection = db[os.environ.get("MONGODB_COLLECTION", "tx_summaries")]
     
-    total_docs = collection.count_documents({})
+    query = {}
+    min_slot = os.environ.get("MIN_SLOT")
+    max_slot = os.environ.get("MAX_SLOT")
+    if min_slot or max_slot:
+        slot_query = {}
+        if min_slot:
+            slot_query["$gte"] = int(min_slot)
+        if max_slot:
+            slot_query["$lte"] = int(max_slot)
+        query["slot"] = slot_query
+        
+    total_docs = collection.count_documents(query)
     print(f"Total documents to export: {total_docs}")
     
     chunk_size = 10000
-    cursor = collection.find({}).batch_size(chunk_size)
+    cursor = collection.find(query).batch_size(chunk_size)
     
     part = 1
     current_chunk = []

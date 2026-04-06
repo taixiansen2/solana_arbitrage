@@ -95,8 +95,19 @@ def main() -> None:
         print(f"MongoDB unavailable: {e}")
         return
 
+    query = {}
+    min_slot = os.environ.get("MIN_SLOT")
+    max_slot = os.environ.get("MAX_SLOT")
+    if min_slot or max_slot:
+        slot_query = {}
+        if min_slot:
+            slot_query["$gte"] = int(min_slot)
+        if max_slot:
+            slot_query["$lte"] = int(max_slot)
+        query["slot"] = slot_query
+
     try:
-        docs = list(coll.find({}))
+        docs = list(coll.find(query))
     finally:
         client.close()
 
