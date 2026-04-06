@@ -97,4 +97,4 @@ RPC_URL="https://your-rpc-url" RATE_LIMIT_RPS=15 FETCH_THREADS=1 \
 ```bash
 docker compose run --rm -v $(pwd)/export_mongo.py:/export_mongo.py -v $(pwd):/out collector python /export_mongo.py
 ```
-这会在根目录下生成按万条切分的 `export_data_partX.json` 文件集。
+这会在 `data/result/` 目录下生成按万条切分的 `export_data_partX.json` 文件集。
