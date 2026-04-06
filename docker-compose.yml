@@ -49,6 +49,9 @@ services:
       SKIP_FETCH: ${SKIP_FETCH:-0}
       FETCH_PROGRESS_EVERY: ${FETCH_PROGRESS_EVERY:-100}
       FETCH_COMMIT_EVERY: ${FETCH_COMMIT_EVERY:-50}
+      FETCH_THREADS: ${FETCH_THREADS:-1}
+      MIN_SLOT: ${MIN_SLOT:-}
+      MAX_SLOT: ${MAX_SLOT:-}
       # 只拉前 N 条（调试）；0 表示不限制
       FETCH_LIMIT: ${FETCH_LIMIT:-0}
       # 例：data/config/programs.propamm-only.yaml 避免扫块时匹配 SoLF 等高频 program

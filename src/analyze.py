@@ -50,12 +50,10 @@ def _conclusion_bullets(df: pd.DataFrame) -> list[str]:
             f"- **Jupiter 强度**：**{pj:.1f}%** 满足「经聚合器且 Jupiter 指令数 ≥ 阈值」的**高度依赖**启发式；其余为未达阈值或未走 Jupiter CPI。",
         )
 
-    if "trade_direction" in df.columns:
-        vc = df["trade_direction"].fillna("unknown").value_counts()
-        top = vc.index[0]
-        bullets.append(
-            f"- **方向启发式**：占比最高的 `trade_direction` 为 **`{top}`**（{int(vc.iloc[0])} 笔）；该字段由 token 净变动符号推断，复杂路由下可能为 `unknown`。",
-        )
+    if "profit" in df.columns:
+        valid_profits = df["profit"].dropna()
+        if len(valid_profits) > 0:
+            bullets.append(f"- **利润记录**：样本中有 **{len(valid_profits)}** 笔交易提取到了明显的正向利润。")
 
     if "propamm_programs" in df.columns:
         exploded = df.explode("propamm_programs")
@@ -137,7 +135,6 @@ def main() -> None:
             "hours_utc.png": "hours",
             "via_aggregator.png": "agg",
             "jupiter_heavy.png": "jup",
-            "trade_direction.png": "dir",
             "propamm_programs_top.png": "prop",
             "trade_size_mint_top.png": "mint",
         }.get(name)
@@ -164,7 +161,6 @@ def main() -> None:
     con_lines.append(fig_md("hours_utc.png", "UTC 小时分布（交易笔数）"))
     con_lines.append(fig_md("via_aggregator.png", "是否经过聚合器（配置列表）"))
     con_lines.append(fig_md("jupiter_heavy.png", "Jupiter 高度依赖（启发式）"))
-    con_lines.append(fig_md("trade_direction.png", "交易方向（启发式）"))
     con_lines.append(fig_md("propamm_programs_top.png", "PropAMM program 命中 Top"))
     con_lines.append(fig_md("trade_size_mint_top.png", "trade_size 涉及 mint 频次 Top"))
 
@@ -228,12 +224,13 @@ def main() -> None:
             lines.append(f"- `{mint}`: {int(c)}")
         lines.append("")
 
-    if len(df) and "pair_mint_a" in df.columns:
-        lines.append("## 交易对之一（`pair_mint_a`）Top mint")
+    if len(df) and "arbitrage" in df.columns:
+        lines.append("## 常见套利路径（按路径频次）")
         lines.append("")
-        vc = df["pair_mint_a"].dropna().value_counts().head(12)
-        for mint, c in vc.items():
-            lines.append(f"- `{mint}`: {int(c)}")
+        paths = df["arbitrage"].dropna().apply(lambda x: " -> ".join(x) if isinstance(x, list) else str(x))
+        vc = paths.value_counts().head(12)
+        for p, c in vc.items():
+            lines.append(f"- `{p}`: {int(c)}")
         lines.append("")
 
     note = (

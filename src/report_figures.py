@@ -145,7 +145,6 @@ def write_all_charts(fig_dir: Path, df: pd.DataFrame) -> dict[str, Path]:
                 fig_dir, df, "jupiter_heavy", "Jupiter-heavy (heuristic)", "jupiter_heavy.png"
             ),
         ),
-        ("dir", write_figure_direction(fig_dir, df)),
         ("prop", write_figure_propamm_top(fig_dir, df)),
         ("mint", write_figure_mint_top(fig_dir, df)),
     ]

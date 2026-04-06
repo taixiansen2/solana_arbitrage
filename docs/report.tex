@@ -39,12 +39,11 @@
 \texttt{signature} & \texttt{string} & 交易签名（Base58），作为逻辑主键。 \\
 \texttt{block\_time} & \texttt{int} & 链上 Unix 时间戳（秒，UTC）。 \\
 \texttt{slot} & \texttt{int} & 交易所在的 slot。 \\
-\texttt{pair\_mint\_a} & \texttt{string} & 交易对之一：按各代币净余额变动绝对值排序后的第一个 mint。 \\
-\texttt{pair\_mint\_b} & \texttt{string} & 交易对之二：按绝对值排序后的第二个 mint。 \\
+\texttt{arbitrage} & \texttt{string[]} & \textbf{套利路径}：按时间顺序排列的代币转移链路（如 USDC $\rightarrow$ WSOL $\rightarrow$ USDC）。 \\
+\texttt{profit} & \texttt{object} & \textbf{套利利润}：记录交易闭环中净增余额最大的代币地址和增量数额。 \\
 \texttt{propamm\_programs} & \texttt{string[]} & 命中的 PropAMM 相关 program（如配置在 \texttt{programs.yaml} 中的地址）。 \\
 \texttt{via\_aggregator} & \texttt{bool} & 是否在顶层或内部指令中命中聚合器（如 Jupiter）列表。 \\
 \texttt{jupiter\_heavy} & \texttt{bool} & 是否深度依赖 Jupiter（聚合器命中且 Jupiter 指令数 $\ge 3$）。 \\
-\texttt{trade\_direction} & \texttt{string} & 启发式交易方向：\texttt{a\_to\_b} / \texttt{b\_to\_a} / \texttt{unknown}。 \\
 \texttt{trade\_size} & \texttt{object} & 规模近似：记录单条绝对 ui 变动最大的一腿及其 mint 与变动量。 \\
 \bottomrule
 \end{longtable}
@@ -52,32 +51,31 @@
 \section{目前存在的问题及原因分析}
 
 \subsection{采集速度瓶颈}
-在最近的测试中，脚本分析仅 1000 个区块（Slot 区间为 407000000 - 407001000）就耗时高达约 4.5 小时。与以往的以太坊套利检测相比，这是一个极其反常的耗时。若以此速度线性外推，按 Solana 主网一天约产生 20 万个区块计算，提取一个月（约 600 万个区块）的交易数据将需要耗时高达 27,000 小时（约 1125 天），这在实际科研分析中是完全不可接受的。
+在最近的测试中，使用了多线程并发优化并在剔除噪音程序（如 SoLF）后，分析 100 个区块（包含 1.6 万多条签名）仍需耗时约 1 小时。若以此速度线性外推，Solana 主网一天产生 20 万个区块，光是提取一天的交易数据就需要耗时 2,000 小时，提取一个月（约 600 万个区块）将需要耗时高达 60,000 小时，效率依然无法满足全网高频监测的需要。
 
 \subsection{原因对比分析（Solana vs Ethereum）}
 \begin{itemize}
     \item \textbf{出块速度差异}：以太坊的平均出块时间为 12 秒，而 Solana 约为 400 毫秒。这意味着同等物理时间内的区块数量，Solana 是以太坊的近 30 倍。
-    \item \textbf{噪音交易成倍增加}：在 Solana 上存在大量极其活跃的高频机器人程序。例如本配置列表中包含的 \texttt{SoLF...} 地址实际上是一个超高频交易机器人。这导致在短短 1000 个区块中，命中的相关交易高达 \textbf{14.5 万笔}。这种指数级的交易量在以太坊由于高昂的 Gas 费是不可想象的。
+    \item \textbf{核心做市商过于庞大}：即便我们已经剔除了明显的机器人噪音，当前系统中类似 \texttt{pAMM...} 和 \texttt{9H6tua...} 这样的高频流动性分发或路由合约极度活跃。仅这 100 个区块中就命中了超过 1.6 万笔相关交易。
 \end{itemize}
 
 \subsection{RPC 请求额度不足}
-由于命中交易量庞大，当前使用的 QuickNode 免费节点面临严重的 API 额度危机。QuickNode 基础版通常限制每日/每月总请求量（约 1000 万次）。按照当前 1000 个区块消耗近 15 万次 RPC 请求的比例，1000 万次额度粗略计算仅够支撑 2000 个左右区块的深度分析。一旦超出，将直接遭遇 \texttt{HTTP 429 (Daily limit reached)} 限制。
+当前使用的 Helius RPC 节点提供的额度为 50 万笔交易/月。按照 100 个区块消耗近 1.6 万次请求的比例，50 万次额度仅够支撑大约 3,000 个区块（约合 20 分钟的主网产块量）的深度解析。一旦超出，必须购买更加昂贵的专有商业级节点订阅。
 
 \subsection{改进方案}
 针对上述问题，提出以下三个改进方案：
 \begin{enumerate}
-    \item \textbf{剥离噪音程序}：在 \texttt{programs.yaml} 配置文件中剔除或将极高频机器人（如 \texttt{SoLF}）移至黑名单，只聚焦核心的 PropAMM 池子，以百倍级缩减不必要的 RPC 请求。
-    \item \textbf{引入高配专有 RPC}：鉴于 Solana 分析的请求密集型特性，必须使用诸如 Helius 专为 Solana优化且额度更高的商业/科研级 RPC 服务。
-    \item \textbf{并发架构重构}：目前已将原先单线程同步的抓取脚本升级为多线程/异步架构，后续配置高 RPS 节点时可通过调高线程数吃满并发带宽。
+    \item \textbf{进一步聚焦核心池子}：继续优化 \texttt{programs.yaml}，仅针对特定的小范围流动性池地址进行监听，主动放弃全网级别的 PropAMM 路由中枢以防数据洪流。
+    \item \textbf{企业级 RPC 与 Dedicated 节点}：鉴于 Solana 分析对请求额度的贪婪消耗，如果经费允许，可租用独享节点（Dedicated Node）以避开公有 API 接口的调用次费。
+    \item \textbf{引入 Geyser/RPC 订阅机制}：放弃事后的全盘 \texttt{getBlock} 扫块轮询，改用基于 WebSocket 的 \texttt{logsSubscribe} 直接在节点端过滤目标事件，仅拉取真正有价值的极少数交易。
 \end{enumerate}
 
 \section{结果分析}
-基于目前已提取解析完成的 \textbf{48,950} 笔入库交易样本（严格过滤为本次获取的 1000 个区块的数据，已排除了前期冗余），得出如下初步结论：
+基于目前新的一轮 100 个区块提取解析的 \textbf{16,707} 笔交易样本，得出如下初步结论：
 \begin{itemize}
-    \item \textbf{时间覆盖与活跃度}：分析涵盖了自 2026-03-17 11:04 至 2026-03-17 11:06（UTC）的极其短暂的时段。几乎全部 4.8 万笔交易集中在这两分钟的高频脉冲中。
-    \item \textbf{极低的聚合器依赖度}：约 \textbf{0.0\%} 的交易命中配置列表中的聚合器，\texttt{jupiter\_heavy} 依赖度同样为 \textbf{0.0\%}。这表明此类 PropAMM 交易绝大多数是直连流动性池或者走了我们未纳入统计范畴的其他非标准路由，明显不符合零售用户的常规 Jupiter 交互特征。
-    \item \textbf{头部程序占比}：在已入库数据中，\texttt{9H6tua7jkLhdm3w8BvgpTn5L...} 是绝对的主力，共出现 19,500 次（占展开后匹配量的 \textbf{39.2\%}）。
-    \item \textbf{方向与资产}：启发式方向推断结果显示高达 40,077 笔交易为 \texttt{unknown}（占比超 80\%），说明交易路径极有可能涉及三边及以上的复杂原子路由套利。
+    \item \textbf{极低的聚合器依赖度}：在严密的 MEV 程序筛选下，命中聚合器（\texttt{via\_aggregator}）以及 \texttt{jupiter\_heavy} 依赖度的占比为 \textbf{0.0\%}。这证实了：真正的套利机器人和做市商为了追求速度和微薄利差，绝不使用面向散户的聚合路由，而是自建智能合约直接使用 CPI 调用底层 DEX 进行原子操作。
+    \item \textbf{头部程序占比}：\texttt{9H6tua7jkLhdm3w8BvgpTn5L...} 出现 6,960 次（占 \textbf{40.6\%}），\texttt{pAMMBay...} 出现 6,314 次。它们垄断了几乎全部高频交易量。
+    \item \textbf{套利链路与利润}：通过新增的 \texttt{arbitrage} 链路检测与 \texttt{profit} 闭环计算，我们在 1.6 万笔交易中成功提取到了 \textbf{4,566} 笔带有明显正向利润的纯套利闭环交易。最常用的中转计价代币为 USDC 和 WSOL。
 \end{itemize}
 
 \section{总结}

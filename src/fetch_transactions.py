@@ -130,43 +130,43 @@ def main() -> None:
                 
                 for f in concurrent.futures.as_completed(future_to_sig):
                     processed += 1
-                program_id, sig, status, err_msg = f.result()
-                
-                if status == "rpc_error":
-                    fail += 1
-                    if fail <= 5 or fail % 500 == 0:
-                        print(f"RPC error {fail}x last_sig={sig[:16]}... {err_msg}", flush=True)
-                elif status == "not_found":
-                    conn.execute(
-                        "UPDATE signatures SET fetched = -1 WHERE program_id = ? AND signature = ?",
-                        (program_id, sig),
-                    )
-                    pending_commit += 1
-                elif status == "mongo_error":
-                    mongo_fail += 1
-                    if mongo_fail <= 5 or mongo_fail % 100 == 0:
-                        print(f"MongoDB error {mongo_fail}x sig={sig[:16]}... {err_msg}", flush=True)
-                elif status == "ok":
-                    conn.execute(
-                        "UPDATE signatures SET fetched = 1 WHERE program_id = ? AND signature = ?",
-                        (program_id, sig),
-                    )
-                    pending_commit += 1
-                    ok += 1
+                    program_id, sig, status, err_msg = f.result()
                     
-                if pending_commit >= commit_every:
-                    conn.commit()
-                    pending_commit = 0
-                    
-                if processed == 1 or processed % prog_every == 0 or processed == total_run:
-                    elapsed = time.monotonic() - t0
-                    rate = processed / elapsed if elapsed > 0 else 0
-                    pct = 100.0 * processed / total_run if total_run else 100.0
-                    print(
-                        f"  fetch {processed}/{total_run} (~{pct:.2f}%) ok={ok} fail={fail} "
-                        f"mongo_fail={mongo_fail} ~{rate:.1f} tx/s wall",
-                        flush=True,
-                    )
+                    if status == "rpc_error":
+                        fail += 1
+                        if fail <= 5 or fail % 500 == 0:
+                            print(f"RPC error {fail}x last_sig={sig[:16]}... {err_msg}", flush=True)
+                    elif status == "not_found":
+                        conn.execute(
+                            "UPDATE signatures SET fetched = -1 WHERE program_id = ? AND signature = ?",
+                            (program_id, sig),
+                        )
+                        pending_commit += 1
+                    elif status == "mongo_error":
+                        mongo_fail += 1
+                        if mongo_fail <= 5 or mongo_fail % 100 == 0:
+                            print(f"MongoDB error {mongo_fail}x sig={sig[:16]}... {err_msg}", flush=True)
+                    elif status == "ok":
+                        conn.execute(
+                            "UPDATE signatures SET fetched = 1 WHERE program_id = ? AND signature = ?",
+                            (program_id, sig),
+                        )
+                        pending_commit += 1
+                        ok += 1
+                        
+                    if pending_commit >= commit_every:
+                        conn.commit()
+                        pending_commit = 0
+                        
+                    if processed == 1 or processed % prog_every == 0 or processed == total_run:
+                        elapsed = time.monotonic() - t0
+                        rate = processed / elapsed if elapsed > 0 else 0
+                        pct = 100.0 * processed / total_run if total_run else 100.0
+                        print(
+                            f"  fetch {processed}/{total_run} (~{pct:.2f}%) ok={ok} fail={fail} "
+                            f"mongo_fail={mongo_fail} ~{rate:.1f} tx/s wall",
+                            flush=True,
+                        )
             
             if pending_commit:
                 conn.commit()

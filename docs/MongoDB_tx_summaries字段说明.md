@@ -21,12 +21,13 @@
 | `signature` | `string` | 交易签名（Base58），逻辑主键；与 SQLite `signatures` 中该行一致。 |
 | `block_time` | `int` \| `null` | 链上 Unix 时间戳（秒，UTC），来自 RPC 结果 `blockTime`。 |
 | `slot` | `int` \| `null` | 交易所在 slot，来自 RPC 结果 `slot`。 |
-| `pair_mint_a` | `string` \| `null` | **交易对**之一：按各 mint 的 token **净余额变动**绝对值排序后的**第一**个 mint。 |
-| `pair_mint_b` | `string` \| `null` | **交易对**之二：绝对值排序**第二**个 mint；仅一笔资产明显变动时可能为 `null`。 |
+| `arbitrage` | `string[]` | **套利路径**：按时间顺序排列的代币转移链路（Token Mints），例如 `["USDC", "WSOL", "USDC"]`。 |
+| `profit` | `object` \| `null` | **套利利润**：在整个代币流转闭环中，提取净余额增加最多的资产及数额。 |
+| `profit.mint` | `string` | 利润对应代币 mint。 |
+| `profit.amount` | `number` | 利润净增量（`float`）。 |
 | `propamm_programs` | `string[]` | 命中的 **PropAMM 相关 program**：在 [`programs.yaml`](../data/config/programs.yaml) 中出现，且满足「指令树中出现 `programId`」或 `message.accountKeys` 公钥命中该列表（与 [`tx_summary.py`](../src/tx_summary.py) 中 `propamm_hits` 一致）。 |
 | `via_aggregator` | `bool` | 是否在顶层/inner 指令中命中 [`aggregators.yaml`](../data/config/aggregators.yaml) **`programs`** 列表中的任一 program。 |
 | `jupiter_heavy` | `bool` | **且** `via_aggregator == true` **且** Jupiter（`aggregators.yaml` 里 `labels` 值为 `jupiter_*` 的地址）在顶层 `instructions` + `meta.innerInstructions` 中出现次数 **≥ `JUPITER_HEAVY_MIN_IX`**（默认 `3`，见 compose）。 |
-| `trade_direction` | `string` | 启发式方向：`a_to_b` / `b_to_a` / `unknown`。由 `pair_mint_a`、`pair_mint_b` 对应净变动的符号推断（一侧净减、一侧净增则判定方向，否则 `unknown`）。 |
 | `trade_size` | `object` | 规模近似：**单条** `(accountIndex, mint)` 上 **绝对 ui 变动最大**的一腿。 |
 | `trade_size.mint` | `string` | 该腿 token mint。 |
 | `trade_size.ui_amount_abs` | `number` | 该腿 ui 数量的绝对值（`float`）。 |

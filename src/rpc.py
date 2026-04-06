@@ -24,14 +24,17 @@ class RpcClient:
         self._client.close()
 
     def _throttle(self) -> None:
+        sleep_time = 0.0
         with self._lock:
             now = time.time()
             delta = now - self._last
             if delta < self.min_interval:
-                time.sleep(self.min_interval - delta)
-                self._last = time.time()
+                sleep_time = self.min_interval - delta
+                self._last = now + sleep_time
             else:
                 self._last = now
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
     def call(
         self,

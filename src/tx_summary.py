@@ -144,22 +144,67 @@ def _largest_token_ui_delta(meta: dict) -> tuple[str | None, float | None]:
     return best_mint, best_delta
 
 
-def _trade_pair_and_direction(
-    net_by_mint: dict[str, float],
-) -> tuple[str | None, str | None, str]:
-    """Top two mints by |net delta|, then direction between them."""
+def _extract_arbitrage_path(msg: dict, meta: dict) -> list[str]:
+    path: list[str] = []
+    
+    idx_to_mint = {}
+    for side in (meta.get("preTokenBalances") or []) + (meta.get("postTokenBalances") or []):
+        idx = side.get("accountIndex")
+        mint = side.get("mint")
+        if idx is not None and mint is not None:
+            idx_to_mint[idx] = mint
+            
+    keys = []
+    for k in msg.get("accountKeys", []) or []:
+        if isinstance(k, dict):
+            keys.append(k.get("pubkey"))
+        elif isinstance(k, str):
+            keys.append(k)
+            
+    pubkey_to_mint = {}
+    for idx, pubkey in enumerate(keys):
+        if idx in idx_to_mint:
+            pubkey_to_mint[pubkey] = idx_to_mint[idx]
+            
+    inner_by_index = {}
+    for group in meta.get("innerInstructions") or []:
+        if isinstance(group, dict) and "index" in group:
+            inner_by_index[group["index"]] = group.get("instructions", [])
+            
+    def _add_transfer(instr: dict):
+        parsed = instr.get("parsed")
+        if isinstance(parsed, dict) and parsed.get("type") in ("transfer", "transferChecked"):
+            info = parsed.get("info", {})
+            mint = info.get("mint")
+            if not mint:
+                source = info.get("source")
+                dest = info.get("destination")
+                mint = pubkey_to_mint.get(source) or pubkey_to_mint.get(dest)
+            if mint:
+                if not path or path[-1] != mint:
+                    path.append(mint)
+
+    for i, instr in enumerate(msg.get("instructions") or []):
+        if isinstance(instr, dict):
+            _add_transfer(instr)
+        for inner in inner_by_index.get(i, []):
+            if isinstance(inner, dict):
+                _add_transfer(inner)
+                
+    return path
+
+def _calculate_profit(net_by_mint: dict[str, float]) -> dict[str, Any] | None:
     if not net_by_mint:
-        return None, None, "unknown"
-    ranked = sorted(net_by_mint.items(), key=lambda x: abs(x[1]), reverse=True)
-    ma, da = ranked[0]
-    if len(ranked) < 2:
-        return ma, None, "unknown"
-    mb, db = ranked[1]
-    if da < 0 < db:
-        return ma, mb, "a_to_b"
-    if db < 0 < da:
-        return ma, mb, "b_to_a"
-    return ma, mb, "unknown"
+        return None
+    best_mint = None
+    best_profit = 0.0
+    for mint, net in net_by_mint.items():
+        if net > best_profit:
+            best_profit = net
+            best_mint = mint
+    if best_mint is not None and best_profit > 0:
+        return {"mint": best_mint, "amount": best_profit}
+    return None
 
 
 def build_tx_summary(
@@ -189,7 +234,10 @@ def build_tx_summary(
     jupiter_heavy = via_aggregator and j_ix >= jupiter_heavy_min_ix
 
     net = _mint_net_deltas(meta)
-    pair_a, pair_b, direction = _trade_pair_and_direction(net)
+    
+    arbitrage_path = _extract_arbitrage_path(msg, meta)
+    profit = _calculate_profit(net)
+    
     tm, td = _largest_token_ui_delta(meta)
     trade_size: dict[str, Any] = {}
     if tm is not None and td is not None:
@@ -199,11 +247,10 @@ def build_tx_summary(
         "signature": signature,
         "block_time": block_time,
         "slot": slot,
-        "pair_mint_a": pair_a,
-        "pair_mint_b": pair_b,
+        "arbitrage": arbitrage_path,
+        "profit": profit,
         "propamm_programs": propamm_hits,
         "via_aggregator": via_aggregator,
         "jupiter_heavy": jupiter_heavy,
-        "trade_direction": direction,
         "trade_size": trade_size,
     }
