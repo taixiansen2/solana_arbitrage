@@ -1,0 +1,86 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage{ctex}
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+
+\title{\textbf{Solana PropAMM 套利数据采集与初步分析报告}}
+\author{汇报人：太子瑞}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{引言}
+尊敬的导师：
+
+本报告旨在汇报当前 Solana 链上基于 PropAMM (Proprietary Automated Market Maker) 的套利交易采集与分析工作。报告将详细阐述数据分析方法、落库字段结构，总结当前脚本运行遇到的瓶颈及其原因（特别是与以太坊套利检测的对比），并给出初步的结果分析和未来的改进方案。
+
+\section{分析方法}
+本项目的数据采集流水线通过以下几个步骤完成：
+\begin{enumerate}
+    \item \textbf{扫块过滤}：使用 \texttt{getBlock} RPC 接口按指定 slot 范围扫描区块，提取区块内所有的交易签名。
+    \item \textbf{按需拉取}：对比预设的 PropAMM 地址列表，过滤出命中目标程序的交易签名，并将其记录至本地 SQLite 数据库中（\texttt{signatures.db}）。
+    \item \textbf{摘要解析与落库}：使用 \texttt{getTransaction}（指定 \texttt{jsonParsed} 编码格式）获取交易详情。为了节省存储空间并提高查询效率，脚本仅在内存中提取核心的交易流转信息（如代币净余额变动、交易对、是否经过 Jupiter 等聚合器等），将精简后的摘要（Summary）写入 MongoDB 数据库。
+\end{enumerate}
+
+\section{字段结构说明}
+存入 MongoDB 的 \texttt{tx\_summaries} 集合文档结构设计如下：
+
+\begin{longtable}{llp{9cm}}
+\toprule
+\textbf{字段名} & \textbf{数据类型} & \textbf{含义} \\
+\midrule
+\texttt{signature} & \texttt{string} & 交易签名（Base58），作为逻辑主键。 \\
+\texttt{block\_time} & \texttt{int} & 链上 Unix 时间戳（秒，UTC）。 \\
+\texttt{slot} & \texttt{int} & 交易所在的 slot。 \\
+\texttt{pair\_mint\_a} & \texttt{string} & 交易对之一：按各代币净余额变动绝对值排序后的第一个 mint。 \\
+\texttt{pair\_mint\_b} & \texttt{string} & 交易对之二：按绝对值排序后的第二个 mint。 \\
+\texttt{propamm\_programs} & \texttt{string[]} & 命中的 PropAMM 相关 program（如配置在 \texttt{programs.yaml} 中的地址）。 \\
+\texttt{via\_aggregator} & \texttt{bool} & 是否在顶层或内部指令中命中聚合器（如 Jupiter）列表。 \\
+\texttt{jupiter\_heavy} & \texttt{bool} & 是否深度依赖 Jupiter（聚合器命中且 Jupiter 指令数 $\ge 3$）。 \\
+\texttt{trade\_direction} & \texttt{string} & 启发式交易方向：\texttt{a\_to\_b} / \texttt{b\_to\_a} / \texttt{unknown}。 \\
+\texttt{trade\_size} & \texttt{object} & 规模近似：记录单条绝对 ui 变动最大的一腿及其 mint 与变动量。 \\
+\bottomrule
+\end{longtable}
+
+\section{目前存在的问题及原因分析}
+
+\subsection{采集速度瓶颈}
+在最近的测试中，脚本分析仅 1000 个区块（Slot 区间为 407000000 - 407001000）就耗时高达约 4.5 小时。与以往的以太坊套利检测相比，这是一个极其反常的耗时。
+
+\subsection{原因对比分析（Solana vs Ethereum）}
+\begin{itemize}
+    \item \textbf{出块速度差异}：以太坊的平均出块时间为 12 秒，而 Solana 约为 400 毫秒。这意味着同等物理时间内的区块数量，Solana 是以太坊的近 30 倍。
+    \item \textbf{噪音交易成倍增加}：在 Solana 上存在大量极其活跃的高频机器人程序。例如本配置列表中包含的 \texttt{SoLF...} 地址实际上是一个超高频交易机器人。这导致在短短 1000 个区块中，命中的相关交易高达 \textbf{14.5 万笔}。这种指数级的交易量在以太坊由于高昂的 Gas 费是不可想象的。
+\end{itemize}
+
+\subsection{RPC 请求额度不足}
+由于命中交易量庞大，当前使用的 QuickNode 免费节点面临严重的 API 额度危机。QuickNode 基础版通常限制每日/每月总请求量（约 1000 万次）。按照当前 1000 个区块消耗近 15 万次 RPC 请求的比例，1000 万次额度粗略计算仅够支撑 2000 个左右区块的深度分析。一旦超出，将直接遭遇 \texttt{HTTP 429 (Daily limit reached)} 限制。
+
+\subsection{改进方案}
+针对上述问题，提出以下三个改进方案：
+\begin{enumerate}
+    \item \textbf{剥离噪音程序}：在 \texttt{programs.yaml} 配置文件中剔除或将极高频机器人（如 \texttt{SoLF}）移至黑名单，只聚焦核心的 PropAMM 池子，以百倍级缩减不必要的 RPC 请求。
+    \item \textbf{引入高配专有 RPC}：鉴于 Solana 分析的请求密集型特性，必须使用诸如 Helius 专为 Solana优化且额度更高的商业/科研级 RPC 服务。
+    \item \textbf{并发架构重构}：目前已将原先单线程同步的抓取脚本升级为多线程/异步架构，后续配置高 RPS 节点时可通过调高线程数吃满并发带宽。
+\end{enumerate}
+
+\section{结果分析}
+基于目前已提取解析完成的 \textbf{57,059} 笔入库交易样本，得出如下初步结论：
+\begin{itemize}
+    \item \textbf{时间覆盖与活跃度}：分析涵盖了自 2026-03-17 11:04 至 2026-04-05 11:32（UTC）的多个活跃时段。绝大多数交易在非常短的密集区块时间内产生。
+    \item \textbf{极低的聚合器依赖度}：约 \textbf{0.0\%} 的交易命中配置列表中的聚合器，\texttt{jupiter\_heavy} 依赖度同样为 \textbf{0.0\%}。这表明此类 PropAMM 交易绝大多数是直连流动性池或者走了我们未纳入统计范畴的其他非标准路由，明显不符合零售用户的常规 Jupiter 交互特征。
+    \item \textbf{头部程序占比}：在已入库数据中，\texttt{pAMMBay6oceH9fJKBRHGP5D4...} 是绝对的主力，共出现 24,660 次（占展开后匹配量的 \textbf{42.5\%}），紧随其后的是 \texttt{9H6tua...} 出现了 20,954 次。
+    \item \textbf{方向与资产}：启发式方向推断结果显示高达 45,592 笔交易为 \texttt{unknown}（占比近 80\%），说明交易路径极有可能涉及三边及以上的复杂原子路由套利。最常涉及的核心资产除了主流的 WSOL 外，USDC (\texttt{EPjFW...}) 也是最重要的计价和中转资产（出现在了近 8,000 次净变动中）。
+\end{itemize}
+
+\section{总结}
+综上所述，我们在 Solana 上的 PropAMM 采集流水线已经跑通并具备了核心数据的提取落库能力，初步验证了这些交易“脱离常规聚合器直连交互”以及“多边原子套利高频爆发”的特征。但由于 Solana 本身的超高吞吐量以及高频机器人的混淆干扰，我们需要通过优化配置剔除噪音以及升级 RPC 基础设施，才能完成大跨度、长周期的数据监测与套利行为的深度挖掘。
+
+\end{document}

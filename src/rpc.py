@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+import threading
 from typing import Any
 
 import httpx
@@ -15,16 +16,22 @@ class RpcClient:
         rps = rps if rps is not None else float(os.environ.get("RATE_LIMIT_RPS", "4"))
         self.min_interval = 1.0 / max(rps, 0.1)
         self._last = 0.0
-        self._client = httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0))
+        self._lock = threading.Lock()
+        limits = httpx.Limits(max_keepalive_connections=100, max_connections=100)
+        self._client = httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0), limits=limits)
 
     def close(self) -> None:
         self._client.close()
 
     def _throttle(self) -> None:
-        now = time.time()
-        delta = now - self._last
-        if delta < self.min_interval:
-            time.sleep(self.min_interval - delta)
+        with self._lock:
+            now = time.time()
+            delta = now - self._last
+            if delta < self.min_interval:
+                time.sleep(self.min_interval - delta)
+                self._last = time.time()
+            else:
+                self._last = now
 
     def call(
         self,
@@ -50,7 +57,7 @@ class RpcClient:
                 last_err = e
                 time.sleep(min(30.0, 1.5**attempt))
                 continue
-            self._last = time.time()
+            
             if "error" in payload:
                 err = payload["error"]
                 if isinstance(err, dict) and err.get("code") in null_if_code:
